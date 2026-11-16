@@ -108,7 +108,8 @@ export function browserTools(c: ToolContext): KageTool[] {
           const openHosts = act.action === 'open' || act.action === 'navigate'
             ? ((await browser.call('tabs', {})) as Tab[]).map(t => hostOf(t.url)) : []
           const typed = typedIn.get(tabKey) ?? []
-          const major = majorAct(act, target(now), { openHosts, typed })
+          // ask 'never': the owner's task is their yes for every step in it, so no step waits for a card.
+          const major = browser.ask === 'never' ? undefined : majorAct(act, target(now), { openHosts, typed })
           if (major && !ask) return { isError: true, text: `refused: ${major}, which needs the owner's yes, and this session cannot ask them` }
           // A look at the page goes to the owner's DM just before the card, when the tab is in front. Best effort:
           // a background tab cannot be captured, and the card alone still names the site and the control.

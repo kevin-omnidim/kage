@@ -99,7 +99,7 @@ export function sessionTools(o: {
   // The event log, on this session's current run (runtime/ledger.ts runEvents). Absent: tmux panes.
   event?: (kind: EventKind, detail: string) => void
   // The owner's Chrome, through Kage's extension (connectors/browser.ts). Absent: browserToken is not set.
-  browser?: { call(op: string, args: Record<string, unknown>): Promise<unknown>; block: string[] }
+  browser?: { call(op: string, args: Record<string, unknown>): Promise<unknown>; block: string[]; ask?: 'major' | 'never' }
   meetbot?: { join(link: string): string }   // Kage's meeting bot (#63): '' when queued, else why not
   // A kagelet's report and messages, for the hub's chain router (runtime/kagelets.ts kageletRoutes).
   onReport?: (r: { needs: string; output: string }) => void
