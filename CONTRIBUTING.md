@@ -79,6 +79,7 @@ Write logs to stderr only. In a tmux pane, stdout carries the channel protocol, 
 | File | Rule |
 |---|---|
 | `gate.ts` | Who may start a task, the task line Claude reads, quoting the thread, teammates. |
+| `alerts.ts` | Wake on alerts: which monitoring app's top-level post wakes Kage untagged (`alerts.apps`, `alerts.match`), the quiet window for repeats, and the fixed instruction around the alert text. |
 | `agents.ts` | Talking to another agent: the tag on every part of a post that must reach it (only with `tag_agent`), the "no reply needed" marker, and the loop guard. |
 | `doctor.ts` | What `kage doctor` decides from the facts `cli/doctor/` gathers: each ok, FAIL or note line, and the closing "All good" that the release soak gate reads. |
 | `jev.ts` | Whether a listed agent's post needs a reply: the Jev settings, which agents it checks, the question, and how its score decides. The call is `connectors/jev.ts`, and `cli/jev-doctor.ts` is the doctor's line. |

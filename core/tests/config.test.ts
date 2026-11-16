@@ -41,6 +41,9 @@ KAGE_JEV_AGENTS=ATEST0001,ATEST0002
 KAGE_JEV_THRESHOLD=0.7
 KAGE_JEV_MODEL=jev-1.0.0
 KAGE_JEV_URL=https://jev.example.com/v1
+KAGE_ALERT_APPS=AALERT001,AALERT002
+KAGE_ALERT_MATCH=pipeline\\.error|calls? dropped
+KAGE_ALERT_QUIET_MINUTES=20
 KAGE_TRIPWIRES=off
 KAGE_TRIPWIRES_TIMEOUT_SEC=30
 KAGE_TRIPWIRES_MAX_KB=32
@@ -108,6 +111,11 @@ describe('importing an env file', () => {
     assert.deepEqual(found.filter(n => !known.has(n)), [])
     const env = parseEnv(FULL)
     assert.deepEqual(KEYS.filter(k => !(k.env in env)).map(k => k.env), [])
+  })
+
+  test('the alert settings move into alerts, typed, and the import gives them back', () => {
+    const { config } = fromEnv(parseEnv(FULL))
+    assert.deepEqual(config.alerts, { apps: ['AALERT001', 'AALERT002'], match: 'pipeline\\.error|calls? dropped', quietMinutes: 20 })
   })
 
   test('tokens go to secrets, never to config', () => {
