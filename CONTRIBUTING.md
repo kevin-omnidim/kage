@@ -127,6 +127,7 @@ Write logs to stderr only. In a tmux pane, stdout carries the channel protocol, 
 | File | Rule |
 |---|---|
 | `gate.ts` | Who may start a task, the task line Claude reads, quoting the thread, teammates. |
+| `alerts.ts` | Wake on alerts: which monitoring app's top-level post wakes Kage untagged (`alerts.apps`, `alerts.match`), the quiet window for repeats, and the fixed instruction around the alert text. |
 | `agents.ts` | Talking to another agent: the tag on every part of a post that must reach it (only with `tag_agent`), and the loop guard. |
 | `leftovers.ts` | What a session left running (#276): a process whose folder is gone, a test run past 10 minutes, a container its restart policy restarted within the hour, and the line that names the command that stops each. `cli/doctor/leftovers.ts` reads `ps`, `lsof` and Docker or Podman, and `cli/top-leftovers.ts` counts them each minute for the `kage top` banner. Kage only reports, and the owner decides. |
 | `boots.ts` | Why the hub started (#255): the cause each start line in the `boots` file carries (update, settings, restart, crash with its error line, unknown, first), and the line `kage status` prints. `runtime/hub-log.ts` writes the cause on the way out and the line at start. |

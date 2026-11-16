@@ -16,6 +16,7 @@ import { sayAsOwner } from './say.ts'
 import { keepSocketUp } from './socket.ts'
 import type { JevAfk, JevCheck, Triage } from '../jev.ts'
 import { heardLine, writeHeard } from './heard.ts'
+import { alertConfig, alertTask, type AlertSettings } from '../../core/alerts.ts'
 import { emptyRoom } from '../../runtime/claude-once.ts'
 import type { Inbox, Saved } from '../../runtime/store.ts'
 import { channelHistory, type ChannelHistory, type ChannelPost } from '../../runtime/channel-watch.ts'
@@ -58,6 +59,7 @@ export async function connectSlack(o: { askOtherAgents?: boolean; saved?: Saved;
   jev?: JevCheck
   ackWords?: boolean
   heard?: (post: string) => Promise<string>
+  alerts?: AlertSettings
   triage?: Triage }) {
   const { bot, user } = o
   const me = await user.auth.test()
@@ -133,11 +135,13 @@ export async function connectSlack(o: { askOtherAgents?: boolean; saved?: Saved;
   const isChannelPost = (m: SlackMessage) => !!m.channel && !m.channel.startsWith('D') && m.channel_type !== 'im' && m.channel_type !== 'mpim' && m.user !== ids.bot && POST_SUBTYPES.has(m.subtype)
     && !agentTag(ids.bot, ids.name).test(m.text ?? '')
 
+  const alerts = alertConfig(o.alerts), alertWoke = new Map<string, number>()
+  if (alerts) log('error' in alerts ? `alerts are off: ${alerts.error}` : `alerts from ${alerts.apps.join(', ')} matching /${alerts.match.source}/ wake Kage`)
   async function onMessage(m: SlackMessage) {
     if (isChannelPost(m)) try { o.hub.channelPost?.(postOf(m)) } catch (e) { log('channel post hook failed', e) }
     afk?.heard(m)
     const thread = `${m.channel}:${m.thread_ts ?? m.ts}`
-    const t = classify(m, ids, cardOf(m), m.thread_ts ? o.hub.kageletsIn?.(m.channel, m.thread_ts) ?? [] : [])
+    const t = (alerts && !('error' in alerts) ? alertTask(m, alerts, alertWoke, Date.now()) : undefined) ?? classify(m, ids, cardOf(m), m.thread_ts ? o.hub.kageletsIn?.(m.channel, m.thread_ts) ?? [] : [])
     if (t.kind === 'kagelet-ask') { const said = o.hub.kageletAsk?.(m.channel, m.thread_ts!, t.name, m.user!, t.text); if (said) await bot.chat.postMessage({ channel: m.channel, thread_ts: m.thread_ts!, text: said }).catch(() => {}); return }
     if (t.kind === 'drop') {
       if (t.reason !== 'not-tagged') log(`dropped ${m.channel}:${m.thread_ts ?? m.ts} from ${m.user ?? 'no user'}${m.app_id ? ` (app ${m.app_id})` : ''}: ${t.reason}, ${DROPS[t.reason]}`)

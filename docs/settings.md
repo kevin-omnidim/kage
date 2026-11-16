@@ -44,6 +44,16 @@ Only a listed agent's post goes to Jev, at most its first 4,000 characters, with
 | `jev.ackWords` | `on` | Under a post that needs no work, Kage posts one or two words that fit it, such as "Dropped" or "Anytime": a listed agent's post Jev says needs no reply, and a person's tag Jev's triage answers with a reaction (the reaction stays too). It costs one small model call, and "Noted" stands in if that call fails. `off` leaves only a green tick on an agent's post and only the reaction on a person's tag. A session may change this one. |
 | `jev.url` | `https://api.typesafe.ai/v1/systemone` | The Jev endpoint. Change it only to use another Jev host. |
 
+## Wake on alerts
+
+A monitoring app (AWS Chatbot, Grafana, PagerDuty) can wake Kage with no tag. Only a top-level post from a listed app whose text matches `alerts.match` starts a task; a reply in the alert's thread never does, so Kage's own answers there cannot loop. The same alert text wakes Kage at most once per quiet window, so an alert that posts every minute during an outage starts one task. Every other alert stays unheard and costs nothing. The task is never the owner's: it runs with a teammate's limits, and the alert text reaches Claude quoted as data inside a fixed instruction. What to do with an alert (which logs to read, who to call) belongs in your own instructions, such as CLAUDE.md. Off unless both `alerts.apps` and `alerts.match` are set.
+
+| Setting | Default | Effect |
+|---|---|---|
+| `alerts.apps` | none | A list of the monitoring apps' Slack app ids whose posts may wake Kage. |
+| `alerts.match` | none | A case-insensitive regular expression the alert text must match, such as `pipeline\.error\|database down\|calls? dropped`. |
+| `alerts.quietMinutes` | `15` | How long the same alert text stays quiet after it woke Kage. Repeats inside it drop as `alert-repeat` in `kage logs`. `0` wakes Kage for every matching post. |
+
 ## Sessions
 
 | Setting | Default | Effect |

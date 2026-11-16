@@ -7,7 +7,7 @@ export type Ids = { owner: string; bot: string; botDm: string; name: string; tea
 
 export const validName = (name: string) => /^[a-z][a-z0-9-]{1,20}$/.test(name)
 
-type Trigger =
+export type Trigger =
   | { kind: 'task'; text: string; side?: true; agent?: string }
   | { kind: 'status' }
   | { kind: 'stop'; now: boolean }
@@ -21,6 +21,7 @@ export const DROPS = {
   'not-listed': 'the sender is not the owner, a listed teammate, or a listed agent tied to its owner and its own tag',
   'not-proven': 'an app posted it or it is an edit, so no listed person typed it',
   loop: 'the agent is over its turn limit with Kage',
+  'alert-repeat': 'the same alert already woke Kage within alerts.quietMinutes',
 } as const
 type Drop = keyof typeof DROPS
 const drop = (reason: Drop): Trigger => ({ kind: 'drop', reason })

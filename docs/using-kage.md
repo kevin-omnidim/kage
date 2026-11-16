@@ -133,6 +133,17 @@ To change the limits, run `kage set harness.maxSessions 6` or `kage set harness.
 
 Ask in a thread: `@kage check the deploy every 30 minutes`, or `@kage tell me when Priya replies here`. Kage keeps the schedule itself, so it survives restarts, and a watch wakes only when someone writes in the thread. It waits until the thread has been quiet for about 4 seconds, so a few quick messages reach it together, and it never waits more than about 15 seconds. A watch ends by itself after 7 days.
 
+### Wake on alerts
+
+A monitoring app can wake Kage with no tag. Set the app ids and the alerts that matter:
+
+```sh
+kage set alerts.apps '["A0123ABC"]'                       # e.g. AWS Chatbot, Grafana, PagerDuty
+kage set alerts.match 'pipeline\.error|database down'      # case-insensitive
+```
+
+A top-level post from that app whose text matches starts a task in the alert's thread; replies in that thread never do. The same alert wakes Kage once per 15 minutes (`alerts.quietMinutes`), however often it posts. The task runs with a teammate's limits, so anything that needs your yes still waits for it. Put what to do with an alert (which logs, who to call) in your own instructions, such as CLAUDE.md. Every setting is in [docs/settings.md](settings.md), "Wake on alerts".
+
 ### What Kage does on its own
 
 - **Every morning:** a DM with the questions that have waited on you for a day or more.
