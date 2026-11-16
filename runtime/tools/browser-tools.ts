@@ -98,7 +98,7 @@ export function browserTools(c: ToolContext): KageTool[] {
           if ('ref' in act && !now.el) return { isError: true, text: 'that control is no longer on the page: take a new snapshot' }
           const tabKey = `${args.channel}:${args.thread_ts}:${tabId ?? 'new'}`
           const typed = typedIn.get(tabKey) ?? []
-          const major = majorAct(act, target(now), { typed })
+          const major = browser.ask === 'never' ? undefined : majorAct(act, target(now), { typed })
           if (major && !ask) return { isError: true, text: `refused: ${major}, which needs the owner's yes, and this session cannot ask them` }
           let pictured = act.action === 'open'
           if (major && act.action !== 'open') {

@@ -107,7 +107,7 @@ export function sessionTools(o: {
   settings?: { set(key: string, value: unknown): void }
   approve?: (tool: string, description: string, input: Record<string, unknown>) => Promise<boolean>
   event?: (kind: EventKind, detail: string) => void
-  browser?: { call(op: string, args: Record<string, unknown>): Promise<unknown>; block: string[] }
+  browser?: { call(op: string, args: Record<string, unknown>): Promise<unknown>; block: string[]; ask?: 'major' | 'never' }
   meetbot?: { join(link: string): string }
   sms?: SmsCampaigns
   screen?: ScreenRecorder
