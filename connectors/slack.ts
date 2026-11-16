@@ -17,6 +17,7 @@ import type { Delivery } from '../core/sessions.ts'
 import type { Task } from '../core/task.ts'
 import { startAfk } from './slack-afk.ts'
 import type { JevAfk, JevCheck, Triage } from './jev.ts'
+import { alertConfig, alertTask, type AlertSettings } from '../core/alerts.ts'
 import { socketWatch } from '../core/socket-watch.ts'
 import type { Inbox, Saved } from '../runtime/store.ts'
 import { channelHistory, type ChannelHistory, type ChannelPost } from '../runtime/channel-watch.ts'
@@ -67,6 +68,8 @@ export async function connectSlack(o: { dir: string; appToken: string; userToken
   afk?: { memory: string; model: string; saved: Saved; call?: (reason: string) => Promise<string>; jev?: JevAfk }
   // The Jev classifier (connectors/jev.ts); absent means every listed agent's tagged post is answered.
   jev?: JevCheck
+  // Alerts that wake Kage untagged (core/alerts.ts): config.json alerts; absent or incomplete means off.
+  alerts?: AlertSettings
   // Intake triage (connectors/jev.ts): a message that needs no work gets a reaction and no session; absent means every tag starts one.
   triage?: Triage }) {
   const { bot, user } = o
@@ -138,13 +141,15 @@ export async function connectSlack(o: { dir: string; appToken: string; userToken
   const POST_SUBTYPES = new Set([undefined, 'bot_message', 'thread_broadcast', 'file_share'])
   const isChannelPost = (m: SlackMessage) => !!m.channel && !m.channel.startsWith('D') && m.channel_type !== 'im' && m.channel_type !== 'mpim' && m.user !== ids.bot && POST_SUBTYPES.has(m.subtype)
 
+  const alerts = alertConfig(o.alerts), alertWoke = new Map<string, number>()   // when each alert text last woke Kage
+  if (alerts) log('error' in alerts ? `alerts are off: ${alerts.error}` : `alerts from ${alerts.apps.join(', ')} matching /${alerts.match.source}/ wake Kage`)
   async function onMessage(m: SlackMessage) {
     // A throw in a channel job's hook never stops the tag handling below.
     if (isChannelPost(m)) try { o.hub.channelPost?.(postOf(m)) } catch (e) { log('channel post hook failed', e) }
     // AFK sees every message: it watches threads that mention the owner, and mutes threads the owner types in.
     afk?.heard(m)
     const thread = `${m.channel}:${m.thread_ts ?? m.ts}`
-    const t = classify(m, ids, cardOf(m))
+    const t = (alerts && !('error' in alerts) ? alertTask(m, alerts, alertWoke, Date.now()) : undefined) ?? classify(m, ids, cardOf(m))
     if (t.kind === 'drop') {
       // The one place a refusal is logged. Untagged talk is nearly all the hub hears, and would push everything else out of the log.
       if (t.reason !== 'not-tagged') log(`dropped ${m.channel}:${m.thread_ts ?? m.ts} from ${m.user ?? 'no user'}${m.app_id ? ` (app ${m.app_id})` : ''}: ${t.reason}, ${DROPS[t.reason]}`)

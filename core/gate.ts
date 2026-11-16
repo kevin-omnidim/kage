@@ -15,7 +15,7 @@ export const validName = (name: string) => /^[a-z][a-z0-9-]{1,20}$/.test(name)
 
 // side: run it in its own session, beside the thread's (which may be busy with something else).
 // status: the owner asks the hub what is running; no session reads it.
-type Trigger =
+export type Trigger =
   // agent: the Slack app id of the listed agent that posted it, with its owner's token.
   | { kind: 'task'; text: string; side?: true; agent?: string }
   | { kind: 'status' }
@@ -33,6 +33,7 @@ export const DROPS = {
   'not-proven': 'an app posted it or it is an edit, so no listed person typed it',
   'no-reply-needed': 'an agent posted it and marked it as needing no answer',
   loop: 'the agent is over its turn limit with Kage',
+  'alert-repeat': 'the same alert already woke Kage within alerts.quietMinutes',
 } as const
 type Drop = keyof typeof DROPS
 const drop = (reason: Drop): Trigger => ({ kind: 'drop', reason })
