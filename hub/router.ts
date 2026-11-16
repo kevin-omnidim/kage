@@ -256,7 +256,7 @@ const sdk = sdkLib ? sdkSessions({
     afk: slack.afk?.command,
     settings: { set: (key, value) => setKey(ENV_FILE, key, value) },
     kagelet: key.split('#side-kagelet-')[1], dreaming: key.split('#side-kdream-')[1], kageletMemory: kag.kmem,
-    browser: browser && { call: browser.call, block: BROWSER_BLOCK },
+    browser: browser && { call: browser.call, block: BROWSER_BLOCK, ask: conn.browser?.ask },
     meetbot: meeting && { join: meeting.join },
     dbRead: { command: () => readCommand(kl.dbRead?.command ?? undefined, store, key.split('#side-kagelet-')[1] ?? ''), maxRows: kl.dbRead?.maxRows || 200 },
     kagelets: { list: () => kag.manager.list(Date.now()), manage: (a, ask) => kag.manager.manage(a, Date.now(), ask) }, approve,

