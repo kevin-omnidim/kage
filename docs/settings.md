@@ -20,7 +20,9 @@ Only your own terminal runs `kage set`: it refuses inside a Kage session. No ses
 
 | Setting | Default | Effect |
 |---|---|---|
-| `slack.app` | required | secrets.json. The `xapp-` token for Socket Mode. `kage save` writes it. |
+| `slack.app` | required, unless HTTP events | secrets.json. The `xapp-` token for Socket Mode. `kage save` writes it. |
+| `slack.signing` | none | secrets.json. The app's signing secret. With `connectors.slack.eventsPort` and no `slack.app`, Slack sends events over HTTP instead of Socket Mode: for a hub on a server, where nobody makes an app-level token by hand. Every request is checked against it; unsigned or older than 5 minutes is refused. |
+| `connectors.slack.eventsPort` | none | The local port Slack's events reach (`127.0.0.1:<port>`, any path) through your https address, which the app's manifest names as its event request URL. Only with `slack.signing`. |
 | `slack.user` | required | secrets.json. The `xoxp-` token. Its owner is Kage's owner: the only person with full access. Others drive Kage only with the limits below (`people`, email, voice). |
 | `slack.bot` | required | secrets.json. The `xoxb-` token Kage posts with. |
 | `name` | `kage` | The word you tag (`@kage`), the tmux session name, and the label on posts. |
@@ -237,6 +239,10 @@ Email is on when `connectors.email.address`, `connectors.email.queue` and `conne
 
 | Setting | Default | Effect |
 |---|---|---|
+| `webToken` | none | secrets.json. Turns web chat on (`connectors/web.ts`) with `connectors.web.port`: a dashboard that signs people in (Kage Fleet) passes their messages in with `Authorization: Bearer <webToken>` on 127.0.0.1. `POST /web/ask` `{chat, text, by, name, owner, files}`, `POST /web/upload?chat&by&name` (raw bytes, up to 10 MB), `GET /web/chat?chat&by&after&wait=1`, `GET /web/chats?by`, `GET /web/file?chat&by&file`. The dashboard says who is asking and whether they are the owner; anyone else is a teammate. A chat, and its files, are readable only by the person who started it. The session sends files back with `send_file`. |
+| `connectors.web.port` | none | The local port web chat listens on. |
+| `connectors.web.perHour` | `60` | Chat messages per hour, across all chats. |
+| `connectors.web.on` | on | `false` turns web chat off even with a token. |
 | `voiceToken` | none | secrets.json. Turns voice on: an MCP endpoint with one tool, `ask_kage`, behind `Authorization: Bearer <token>`. |
 | Hang-up webhook | same voice port | Send `POST /voice/ended` with the same Bearer `voiceToken` and JSON with `call_id` or `session_id` set to the MCP session id (or pass the `mcp-session-id` header) when the caller hangs up. Ends that call at once. Unknown or repeated ids do nothing and return 204; a bad token gets 401. |
 | `connectors.github.app.id` | none | Your Kage GitHub App's id. `kage connect github` sets it when you create the app. With `githubAppKey`, `githubSecret`, `connectors.github.app.slug`, `connectors.github.login` and `connectors.github.userId`, it turns GitHub on: a tag of `@<slug>` in an issue, a pull request, a review or an inline comment wakes Kage, and nothing else does. |

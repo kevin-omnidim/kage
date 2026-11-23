@@ -114,6 +114,12 @@ KAGE_GITHUB_USER_ID=4242
 KAGE_MEETING_PORT=9003
 KAGE_MEETING_PER_HOUR=5
 KAGE_MEETING_AGENT_API=https://voice.example.test
+KAGE_SLACK_EVENTS_PORT=9005
+KAGE_WEB=on
+KAGE_WEB_PORT=9006
+KAGE_WEB_PER_HOUR=30
+KAGE_WEB_TOKEN=web-fixture-token
+SLACK_SIGNING_SECRET=signing-fake
 KAGE_BROWSER_ASK=never
 KAGE_MEETING_AGENT_ID=7
 KAGE_BROWSER_PORT=9004
@@ -282,7 +288,15 @@ describe('what the hub needs to run', () => {
   const secrets = { slack: { app: 'xapp-fake', user: 'xoxp-fake', bot: 'xoxb-fake' } }
   test('a good config gives the name and both people lists, an agent as app:owner:tag', () => {
     const config = Config.parse({ version: 1, people: { teammates: ['UTEST0001'], agents: [{ app: 'ATEST0001', owner: 'UTEST0001', tag: 'UTEST0003' }, { app: 'ATEST0009' }] } })
-    assert.deepEqual(checkSettings(config, secrets), { name: 'kage', teammates: ['UTEST0001'], trusted: [], notTrusted: [], apps: ['ATEST0001:UTEST0001:UTEST0003', 'ATEST0009'] })
+    assert.deepEqual(checkSettings(config, secrets), { name: 'kage', teammates: ['UTEST0001'], trusted: [], notTrusted: [], apps: ['ATEST0001:UTEST0001:UTEST0003', 'ATEST0009'], slack: true })
+    const web = { version: 1, connectors: { web: { port: 9100 } } } as Config
+    assert.equal((checkSettings(web, { webToken: 't' }) as { slack: boolean }).slack, false)
+    assert.match((checkSettings(web, {}) as { error: string }).error, /slack\.user/)
+    assert.match((checkSettings({ ...web, connectors: { web: { port: 9100, on: false } } } as Config, { webToken: 't' }) as { error: string }).error, /slack\.user/)
+    assert.match((checkSettings(web, { webToken: 't', slack: { bot: 'b' } }) as { error: string }).error, /slack\.user/)
+    assert.match((checkSettings({ version: 1 }, { slack: { user: 'u', bot: 'b' } }) as { error: string }).error, /slack\.app.*slack\.signing/)
+    assert.match((checkSettings({ version: 1 }, { slack: { user: 'u', bot: 'b', signing: 's' } }) as { error: string }).error, /eventsPort/)
+    assert.equal((checkSettings({ version: 1, connectors: { slack: { eventsPort: 8810 } } }, { slack: { user: 'u', bot: 'b', signing: 's' } }) as { name: string }).name, 'kage')
   })
   test('a missing token is refused by its path, and a bad name by itself', () => {
     assert.match((checkSettings({ version: 1 }, { slack: { app: 'a', bot: 'b' } }) as { error: string }).error, /slack\.user/)

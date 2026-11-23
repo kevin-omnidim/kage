@@ -12,6 +12,7 @@ import { load } from './config.ts'
 import { log, logKey, tapLog } from '../runtime/log.ts'
 import { connectorHealth } from '../core/connector-health.ts'
 import { listenForCommands } from '../connectors/slack/commands.ts'
+import { offlineSlack } from '../connectors/slack-offline.ts'
 import { connectSlack } from '../connectors/slack/connect.ts'
 import { jevAfk, jevCheck, jevTriage } from '../connectors/jev.ts'
 import { jevConfig } from '../core/jev.ts'
@@ -68,7 +69,7 @@ import { ownerLines } from '../core/messages.ts'
 import { answersInThread, blockedTask, planDrop } from '../core/blocks.ts'
 import { unanswered } from '../core/ledgers.ts'
 
-const { ENV_FILE, NAME, Title, TEAMMATES, TRUSTED_PEOPLE, TRUSTED_APPS, config, secrets, bot, user } = load()
+const { ENV_FILE, NAME, Title, TEAMMATES, TRUSTED_PEOPLE, TRUSTED_APPS, SLACK, config, secrets, bot, user } = load()
 const { harness = {}, kagelets: kl = {}, afk = {}, connectors: conn = {} } = config
 const health = connectorHealth(Date.now())
 tapLog(a => health.see(a, Date.now()))
@@ -170,8 +171,8 @@ const jev = jevConfig(config.jev, secrets.jevKey)
 if (jev && 'error' in jev) log(`jev is off: ${jev.error}`)
 else if (jev) log(`jev checks ${jev.agents === 'all' ? 'every listed agent' : jev.agents.join(', ')} at threshold ${jev.threshold}`)
 
-const slack = await connectSlack({
-  saved: store, catchUpMax: () => config.tripwires?.catchUpMax || 1000, dir: DIR, appToken: secrets.slack!.app!, userToken: secrets.slack!.user!, bot, user, name: NAME, title: Title, askOtherAgents: config.askOtherAgents, teammates: TEAMMATES, trusted: TRUSTED_PEOPLE, apps: TRUSTED_APPS,
+const slack: Awaited<ReturnType<typeof connectSlack>> = !SLACK ? offlineSlack(NAME, DIR) : await connectSlack({
+  saved: store, catchUpMax: () => config.tripwires?.catchUpMax || 1000, dir: DIR, appToken: secrets.slack!.app ?? undefined, signingSecret: secrets.slack!.signing ?? undefined, eventsPort: config.connectors?.slack?.eventsPort, userToken: secrets.slack!.user!, bot, user, name: NAME, title: Title, askOtherAgents: config.askOtherAgents, teammates: TEAMMATES, trusted: TRUSTED_PEOPLE, apps: TRUSTED_APPS,
   hub: { deliver, stop: (c, cut, by) => {
       const key = sessionKey(c, { lane: 'main' })
       return mayStop(by, slack.ids.owner, starters, key) ? stopThread(key, cut) : 'Only the owner, or the teammate whose task started this thread, can stop it.'
@@ -254,7 +255,7 @@ const sdk = sdkLib ? sdkSessions({
   deferred,
   hub: () => d,
   tools: (key, send, approve, turnSender) => sessionTools({
-    title: Title, bot, user, botDm: () => slack.ids.botDm, dir: DIR, ledgers, send, memory: MEM, turnSender, cardOut: cardToWhatsApp,
+    title: Title, bot, user, botDm: () => slack.ids.botDm, dir: DIR, ledgers, send, memory: MEM, turnSender, askOwner: SLACK ? undefined : p => web ? web.approval(key, p) : Promise.reject(new Error('no web chat')), cardOut: cardToWhatsApp,
     schedules: { add: j => jobs.add(key, j, Date.now()), remove: id => jobs.remove(key, id), list: () => schedules.list(key), hookUrl: id => jobs.hookUrl(id), tune: (id, t) => schedules.tune(key, id, t, Date.now()), restore: id => jobs.swaps.restore(key, id, Date.now()), move: (id, to) => schedules.move(key, id, to, Date.now()) },
     afk: slack.afk?.command,
     settings: { set: (key, value) => setKey(ENV_FILE, key, value) },
@@ -339,8 +340,8 @@ else if (existsSync(CRONS)) {
   }
 }
 
-const { meeting, voice, sms, replies, replayOf, jobs, clock } = startConnectors({ secrets, conn, store, slack, bot, ping: pingThread, say: owner.say, ownerAnswer: answerFromWhatsApp, NAME, CODE, DIR, d, inbox, deliver, placeOf, failed, schedules, event: ledgers.event, ledgers, tripwires: config.tripwires })
-listenForCommands(slack.socket, { user, team: slack.ids.team!, commands: COMMANDS, ledgers })
+const { meeting, voice, sms, web, replies, replayOf, jobs, clock } = startConnectors({ secrets, conn, store, slack, bot, ping: pingThread, say: owner.say, ownerAnswer: answerFromWhatsApp, NAME, CODE, DIR, d, inbox, deliver, placeOf, failed, verdict: (id, b) => { d.verdict(id, { type: 'verdict', request_id: id, behavior: b }) || answerCard(id, b) }, schedules, event: ledgers.event, ledgers, tripwires: config.tripwires })
+if (SLACK) listenForCommands(slack.socket, { user, team: slack.ids.team!, commands: COMMANDS, ledgers })
 
 function failed(m: ToSession) {
   if (m.type !== 'task') return

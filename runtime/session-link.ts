@@ -11,12 +11,12 @@ import { log } from './log.ts'
 import type { ChannelReply, FromSession, ToSession } from './protocol.ts'
 import type { scheduler } from './scheduler.ts'
 
-const REPLY_PREFIX: Record<ChannelReply['type'], string> = { mail: 'mail:', wa: 'wa:', voice: 'voice:', sms: 'sms:' }
-type Replies = Record<ChannelReply['type'], (key: string, text: string) => void>
+const REPLY_PREFIX: Record<ChannelReply['type'], string> = { mail: 'mail:', wa: 'wa:', voice: 'voice:', sms: 'sms:', web: 'web:' }
+type Replies = Record<Exclude<ChannelReply['type'], 'web'>, (key: string, text: string) => void> & { web?: (key: string, text: string, file?: string) => void }
 const isReplyType = (t: unknown): t is ChannelReply['type'] => typeof t === 'string' && Object.hasOwn(REPLY_PREFIX, t)
 
 export function routeReply(key: string, m: ChannelReply, o: Replies) {
-  if (key.startsWith(REPLY_PREFIX[m.type])) o[m.type](key, m.text)
+  if (key.startsWith(REPLY_PREFIX[m.type])) (o[m.type] as ((key: string, text: string, file?: string) => void) | undefined)?.(key, m.text, m.file)
 }
 
 const holdFile = (dir: string, key: string) => join(dir, 'held', encodeURIComponent(key))
@@ -126,7 +126,7 @@ export function listenForSessions(path: string, d: Dispatcher<ToSession>, o: Rep
         } else if (m.type === 'permission' && key && typeof m.id === 'string') {
           d.permission(key, m.id)
         } else if (isReplyType(m.type) && key && typeof m.text === 'string') {
-          routeReply(key, { type: m.type, text: m.text }, o)
+          routeReply(key, { type: m.type, text: m.text, ...(m.type === 'web' && typeof m.file === 'string' && { file: m.file }) }, o)
         } else if (m.type === 'schedule' && key) {
           const j = m as Partial<{ id: string; cron: string; prompt: string; recurring: boolean; lane: boolean; probe: ProbeArg; shadow: { of: string; live: string } }>
           if (typeof j.id === 'string' && typeof j.cron === 'string' && typeof j.prompt === 'string') {

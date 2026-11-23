@@ -50,6 +50,11 @@ export function slackTools(c: ToolContext): KageTool[] {
         if (o.send({ type: 'voice', text: a.text }) === false) return { isError: true, text: HUB_DOWN }
         return { text: 'spoken to the caller' }
       }
+      if (a.channel === 'web') {
+        if (a.private) return { isError: true, text: 'refused: a web chat has no private reply; it is already one person' }
+        if (o.send({ type: 'web', text: a.text }) === false) return { isError: true, text: HUB_DOWN }
+        return { text: 'shown in the web chat' }
+      }
       if (a.channel === 'sms') {
         if (a.private) return { isError: true, text: 'refused: a text conversation has no private reply' }
         if (!ownerTask.has(key)) return { isError: true, text: 'refused: no task came from that text conversation' }
@@ -97,7 +102,7 @@ export function slackTools(c: ToolContext): KageTool[] {
       const a = args as { channel: string; thread_ts: string; users: string[]; text: string; from?: string }
       const key = `${a.channel}:${a.thread_ts}`
       const fromPhone = a.channel === 'whatsapp' && ownerOnly(a)
-      if (!taskChannels.has(a.channel) || a.channel === 'email' || (a.channel === 'whatsapp' && !fromPhone) || (a.channel === 'voice' && !ownerOnly(a))) return { isError: true, text: 'refused: only a task from a Slack thread or the owner\'s own call may message people' }
+      if (!taskChannels.has(a.channel) || a.channel === 'email' || a.channel === 'web' || (a.channel === 'whatsapp' && !fromPhone) || (a.channel === 'voice' && !ownerOnly(a))) return { isError: true, text: 'refused: only a task from a Slack thread or the owner\'s own call may message people' }
       const unseen = c.unseenMention(a.text, a.users)
       if (unseen) return { isError: true, text: unseen }
       const toAgent = foreignAgentRefusal([a.text, ...[...a.users, ...a.from ? [a.from] : []].map(u => `<@${u}>`)].join(' '), o.foreignAgents?.() ?? [])
@@ -134,7 +139,7 @@ export function slackTools(c: ToolContext): KageTool[] {
     },
   }, {
     name: 'send_file',
-    description: 'Attach a file to the thread a task came from: a CSV for a table too long for a message or one the reader will keep or copy into a sheet, a PNG for a chart. Post the short answer with reply as well.',
+    description: 'Attach a file to the thread a task came from: a CSV for a table too long for a message or one the reader will keep or copy into a sheet, a PNG for a chart. In a web chat, any document, sheet, PDF or image up to 10 MB. Post the short answer with reply as well.',
     shape: {
       channel: s.describe('channel attribute from the task tag'),
       thread_ts: s.describe('thread_ts attribute from the task tag'),
@@ -148,6 +153,12 @@ export function slackTools(c: ToolContext): KageTool[] {
       try { real = realpathSync(a.path); if (!real.startsWith(`${realpathSync(folder)}/`) || !statSync(real).isFile()) real = '' } catch { real = '' }
       if (!real) return { isError: true, text: `refused: send only a file you wrote in this thread's files folder, ${folder}/` }
       const type = extname(real).toLowerCase()
+      if (a.channel === 'web') {
+        if (statSync(real).size > 10 * 1024 * 1024) return { isError: true, text: 'refused: a web chat file is up to 10 MB' }
+        if (['.csv', '.txt', '.md', '.json', '.html', '.xml', '.yaml', '.yml', '.sql', '.log'].includes(type) && findSecret(readFileSync(real, 'utf8'))) return { isError: true, text: 'refused: the file looks like it holds a secret. Leave it out of the file.' }
+        if (o.send({ type: 'web', text: '', file: real }) === false) return { isError: true, text: HUB_DOWN }
+        return { text: `${basename(real)} is in the chat for them to download` }
+      }
       if (type !== '.csv' && type !== '.png') return { isError: true, text: 'refused: send a .csv (it opens in Excel and Google Sheets) or a .png' }
       const csv = type === '.csv' ? readFileSync(real, 'utf8') : ''
       const secret = findSecret(csv) || (/(^|,)\s*"?[^,\n]*(password|passwd|secret|token|api.?key)/i.test(csv.split('\n')[0]!) && 'password or key column')

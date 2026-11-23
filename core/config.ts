@@ -53,6 +53,8 @@ export const Config = z.strictObject({
     browser: z.strictObject({ port: count, block: strings, ask: z.enum(['major', 'never']).optional() }).optional(),
     whatsapp: z.strictObject({ on: yes, memory: text, model: text, wahaUrl: text, hookHost: text, hookPort: count, checkMinutes: count }).optional(),
     sms: z.strictObject({ on: yes, provider: z.enum(['twilio', 'telnyx']).optional(), from: text, port: count, perHour: count, perMinute: count, publicUrl: text, accountSid: text, telnyxPublicKey: text }).optional(),
+    slack: z.strictObject({ eventsPort: count }).optional(),
+    web: z.strictObject({ on: yes, port: count, perHour: count }).optional(),
     commands: z.record(z.string().regex(/^\/[a-z][a-z0-9-]{1,30}$/), z.string().regex(/^\/\S+$/)).optional(),
   }).optional(),
   unknown: z.record(z.string(), z.string().nullable()).optional(),
@@ -62,9 +64,9 @@ export type KeyRoute = NonNullable<Config['sessionKeys']>[string]
 
 const sec = z.string().nullable().optional()
 export const Secrets = z.strictObject({
-  slack: z.strictObject({ app: sec, user: sec, bot: sec }).optional(),
+  slack: z.strictObject({ app: sec, user: sec, bot: sec, signing: sec }).optional(),
   aws: z.strictObject({ accessKeyId: sec, secretAccessKey: sec }).optional(),
-  voiceToken: sec, githubSecret: sec, githubAppKey: sec, githubToken: sec, meetingToken: sec, browserToken: sec, jevKey: sec, voiceAgentKey: sec, claudeToken: sec, twilioAuthToken: sec, telnyxApiKey: sec,
+  voiceToken: sec, githubSecret: sec, githubAppKey: sec, githubToken: sec, meetingToken: sec, browserToken: sec, jevKey: sec, voiceAgentKey: sec, claudeToken: sec, webToken: sec, twilioAuthToken: sec, telnyxApiKey: sec,
   waha: z.record(z.string().regex(/^[A-Z][A-Z0-9_]*$/), z.string()).optional(),
   cartesiaKey: sec,   // compat: remove after 2026-12-15 (Cartesia speech is gone; an old secrets.json still holds it, and the schema is strict)
   unknown: z.record(z.string(), z.string()).optional(),
@@ -135,6 +137,8 @@ export const KEYS: Row[] = [
   R('KAGE_SMS_PER_HOUR', 'connectors.sms.perHour', int), R('KAGE_SMS_PER_MINUTE', 'connectors.sms.perMinute', int), R('KAGE_SMS_PUBLIC_URL', 'connectors.sms.publicUrl'),
   R('KAGE_SMS_ACCOUNT_SID', 'connectors.sms.accountSid'), R('KAGE_SMS_TELNYX_PUBLIC_KEY', 'connectors.sms.telnyxPublicKey'),
   R('KAGE_COMMANDS', 'connectors.commands', commands),
+  R('KAGE_WEB', 'connectors.web.on', onoff), R('KAGE_WEB_PORT', 'connectors.web.port', int), R('KAGE_WEB_PER_HOUR', 'connectors.web.perHour', int), R('KAGE_WEB_TOKEN', 'webToken', str, true),
+  R('KAGE_SLACK_EVENTS_PORT', 'connectors.slack.eventsPort', int), R('SLACK_SIGNING_SECRET', 'slack.signing', str, true),
   R('SLACK_APP_TOKEN', 'slack.app', str, true), R('SLACK_USER_TOKEN', 'slack.user', str, true), R('SLACK_BOT_TOKEN', 'slack.bot', str, true),
   R('KAGE_AWS_ACCESS_KEY_ID', 'aws.accessKeyId', str, true), R('KAGE_AWS_SECRET_ACCESS_KEY', 'aws.secretAccessKey', str, true),
   R('KAGE_VOICE_TOKEN', 'voiceToken', str, true), R('KAGE_GITHUB_SECRET', 'githubSecret', str, true), R('KAGE_GITHUB_APP_KEY', 'githubAppKey', lines, true), R('KAGE_MEETING_TOKEN', 'meetingToken', str, true),
@@ -222,19 +226,23 @@ export function badValue(c: Config): string | undefined {
   for (const [path, v] of [['harness.memory', c.harness?.memory], ['harness.ownerMemory', c.harness?.ownerMemory], ['harness.cwd', c.harness?.cwd], ['connectors.whatsapp.memory', c.connectors?.whatsapp?.memory]] as const)
     if (v && /['"\\]/.test(v)) return `${path} must not hold a quote or a backslash`
   const k = c.connectors
-  for (const [path, v] of [['voice.port', k?.voice?.port], ['github.port', k?.github?.port], ['meeting.port', k?.meeting?.port], ['browser.port', k?.browser?.port], ['whatsapp.hookPort', k?.whatsapp?.hookPort], ['sms.port', k?.sms?.port]] as const)
+  for (const [path, v] of [['voice.port', k?.voice?.port], ['github.port', k?.github?.port], ['meeting.port', k?.meeting?.port], ['browser.port', k?.browser?.port], ['whatsapp.hookPort', k?.whatsapp?.hookPort], ['slack.eventsPort', k?.slack?.eventsPort], ['web.port', k?.web?.port], ['sms.port', k?.sms?.port]] as const)
     if (v != null && !(Number.isInteger(v) && v >= 1024 && v <= 65535)) return `connectors.${path} must be a port from 1024 to 65535`
   const hook = c.tripwires?.hookPort
   if (hook && !(Number.isInteger(hook) && hook >= 1024 && hook <= 65535)) return 'tripwires.hookPort must be 0 (off) or a port from 1024 to 65535'
 }
-export function checkSettings(c: Config, s: Secrets): { name: string; teammates: string[]; trusted: string[]; notTrusted: string[]; apps: string[] } | { error: string } {
-  for (const [path, v] of [['slack.app', s.slack?.app], ['slack.user', s.slack?.user], ['slack.bot', s.slack?.bot]] as const) if (!v) return { error: `${path} is missing in secrets.json` }
+export function checkSettings(c: Config, s: Secrets): { name: string; teammates: string[]; trusted: string[]; notTrusted: string[]; apps: string[]; slack: boolean } | { error: string } {
+  const webOnly = !s.slack?.user && !s.slack?.bot && !s.slack?.app && !!s.webToken && !!c.connectors?.web?.port && c.connectors.web.on !== false
+  if (!webOnly) {
+    for (const [path, v] of [['slack.user', s.slack?.user], ['slack.bot', s.slack?.bot]] as const) if (!v) return { error: `${path} is missing in secrets.json` }
+    if (!s.slack?.app && !(s.slack?.signing && c.connectors?.slack?.eventsPort)) return { error: 'secrets.json needs slack.app (Socket Mode), or slack.signing with connectors.slack.eventsPort (HTTP events)' }
+  }
   const bad = badValue(c)
   if (bad) return { error: bad }
   const name = (c.name || 'kage').toLowerCase()
   if (!validName(name)) return { error: `name "${name}" must be a short lowercase word (letters, digits, dashes)` }
   const teammates = c.people?.teammates ?? [], trusted = c.people?.trusted ?? []
-  return { name, teammates, trusted: trusted.filter(id => teammates.includes(id)), notTrusted: trusted.filter(id => !teammates.includes(id)), apps: (c.people?.agents ?? []).map(agentLine) }
+  return { name, teammates, trusted: trusted.filter(id => teammates.includes(id)), notTrusted: trusted.filter(id => !teammates.includes(id)), apps: (c.people?.agents ?? []).map(agentLine), slack: !webOnly }
 }
 
 const SAFE = [/^kagelets\.(max|dailyUsd|totalDailyUsd|chainUsd|needsPerDay|askRunsPerHour|notesKept|noteChars|measureMinutes|trendRuns|turnStallMinutes|incidentsPerHour)$/, /^waiting\.expireHours$/, /^top\.threadCostBar$/, /^afk\.(on|model)$/, /^harness\.(jobModel|jobFreshEvery|jobCarry|jobCarryChars|rotateTokens|jobLaneDefault|jobCatchUpHours|jobCatchUpStaggerSeconds)$/, /^jev\.(threshold|model|ackWords)$/, /^tripwires\.(timeoutSec|maxKb|failPing|patternMax|lineMax|maxPosts|catchUpMax|seenMax|hookPerHour|swapAfter|shadowWindowMin|swapUndoDays)$/,

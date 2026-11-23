@@ -1,4 +1,5 @@
 import { SocketModeClient, LogLevel } from '@slack/socket-mode'
+import { SlackEvents } from '../slack-http.ts'
 import type { WebClient } from '@slack/web-api'
 import { log, logger } from '../../runtime/log.ts'
 import { agentNote, agentRoster, foreignAgentTags, loopGuard } from '../../core/agents.ts'
@@ -54,7 +55,7 @@ export async function intake(m: SlackMessage, ack: () => Promise<void>, hub: Pic
   if (fresh) await hear(m, source ?? '')
 }
 
-export async function connectSlack(o: { askOtherAgents?: boolean; saved?: Saved; dir: string; appToken: string; userToken: string; bot: WebClient; user: WebClient; name: string; title: string; teammates: string[]; trusted?: string[]; apps: string[]; hub: Hub; catchUpMax?: () => number
+export async function connectSlack(o: { askOtherAgents?: boolean; saved?: Saved; dir: string; appToken?: string; signingSecret?: string; eventsPort?: number; userToken: string; bot: WebClient; user: WebClient; name: string; title: string; teammates: string[]; trusted?: string[]; apps: string[]; hub: Hub; catchUpMax?: () => number
   afk?: { memory: string; model: string; saved: Saved; call?: (reason: string) => Promise<string>; jev?: JevAfk }
   jev?: JevCheck
   ackWords?: boolean
@@ -255,7 +256,8 @@ export async function connectSlack(o: { askOtherAgents?: boolean; saved?: Saved;
 
   const loops = loopGuard({ perWindow: 20, windowMs: 60_000, hops: 4 })
   const queue = new Map<string, Promise<void>>()
-  const socket = new SocketModeClient({ appToken: o.appToken, logger, logLevel: LogLevel.WARN })
+  const socket = o.appToken ? new SocketModeClient({ appToken: o.appToken, logger, logLevel: LogLevel.WARN })
+    : new SlackEvents({ signingSecret: o.signingSecret!, port: o.eventsPort! }) as unknown as SocketModeClient
   socket.on('app_mention', async ({ ack }) => { await ack() })
   async function hear(m: SlackMessage, source: string) {
     const k = m.channel ? sessionKey(slackConversation(m, ids.botDm, kagePosted)) : ''

@@ -7,6 +7,7 @@ import { connectGithub } from '../connectors/github.ts'
 import { connectMeeting } from '../connectors/meeting.ts'
 import { connectVoice } from '../connectors/voice.ts'
 import { connectSms } from '../connectors/sms.ts'
+import { connectWeb } from '../connectors/web.ts'
 import { smsSender } from '../connectors/sms-send.ts'
 import { openSmsStore } from '../runtime/sms-store.ts'
 import { smsProvider } from '../core/sms.ts'
@@ -30,7 +31,7 @@ export function startConnectors(o: {
   ownerAnswer: (a: { code: string; behavior: 'allow' | 'deny' }) => void
   NAME: string; CODE: string; DIR: string; d: Dispatcher<ToSession>; inbox: Inbox
   deliver: (c: Conversation, task: Task, place: string, lane?: Lane, by?: string) => Delivery
-  placeOf: (key: string) => string; failed: (m: ToSession) => void
+  placeOf: (key: string) => string; failed: (m: ToSession) => void; verdict: (id: string, behavior: 'allow' | 'deny') => void
   schedules: Parameters<typeof startJobEvents>[0]['schedules']; event: Parameters<typeof startJobEvents>[0]['event']; ledgers: Parameters<typeof startJobEvents>[0]['ledgers']; tripwires: Config['tripwires']
 }) {
   const { secrets, conn, store, slack, bot, NAME, CODE, DIR, d, inbox, deliver, placeOf, failed } = o
@@ -94,6 +95,10 @@ export function startConnectors(o: {
   })
 
   const sms = startSms(o)
+  const web = connectWeb({
+    web: { ...conn.web, token: secrets.webToken }, name: NAME, dir: DIR, deliver, verdict: o.verdict,
+    failed: task => void o.say(startFailedNote(task.meta.place, d.lastStartError())),
+  })
   const jobs = startJobEvents({ store, inbox, ping: o.ping, notify: text => void o.say(text), schedules: o.schedules, event: o.event, ledgers: o.ledgers, tripwires: o.tripwires })
 
   const replies = {
@@ -104,12 +109,13 @@ export function startConnectors(o: {
       void o.say(ownerLines.emailReplyFailed(placeOf(key), e))
     }),
     sms: (key: string, text: string) => void sms?.connector.reply(key, text),
+    web: (key: string, text: string, file?: string) => web?.reply(key, text, file),
   }
   function replayOf(connector: string): ((source: string, payload: string) => Promise<unknown>) | undefined {
     return ({ slack: slack.replay, github: github?.replay, meeting: meeting?.replay, whatsapp: whatsapp?.replay, sms: sms?.connector.replay, hook: jobs.replay } as Record<string, ((source: string, payload: string) => Promise<unknown>) | undefined>)[connector]
   }
 
-  return { github, meeting, email, voice, whatsapp, sms, replies, replayOf, jobs, clock }
+  return { github, meeting, email, voice, whatsapp, sms, web, replies, replayOf, jobs, clock }
 }
 
 function startSms(o: Parameters<typeof startConnectors>[0]) {

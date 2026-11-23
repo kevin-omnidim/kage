@@ -94,6 +94,7 @@ export function sessionTools(o: {
   dir: string
   ledgers: Ledgers
   send: (m: ChannelReply) => boolean | void
+  askOwner?: (p: { id: string; tool: string; description: string; preview: string; where: string }) => Promise<void>
   memory: { own: string; owner: string }
   schedules?: { add(j: Pick<Schedule, 'id' | 'cron' | 'prompt' | 'recurring' | 'lane' | 'trigger' | 'needs'> & { probe?: ProbeArg; shadow?: { of: string; live: string } }): string | void | Promise<string | void>; remove(id: string): void; list(): Schedule[]; tune?(id: string, t: TuneArg): string | void; hookUrl?(id: string): string | undefined; restore?(id: string): string | undefined; move?(id: string, to: string): string | undefined }
   afk?: (c: AfkCommand) => Promise<string>
@@ -242,6 +243,7 @@ export function sessionTools(o: {
       if (!m.scheduled && openWaiting(ledger('waiting')).some(i => i.thread === key)) append('waiting', ['answered', key, '', ''])
     },
     async askOwner(p: { id: string; tool: string; description: string; preview: string }) {
+      if (o.askOwner) return o.askOwner({ ...p, where })
       const MAX = 2500
       const description = slackPlain((p.description.length > 400 ? `${p.description.slice(0, 400)}...` : p.description).replaceAll('```', "'''").replace(/\s*\n\s*/g, ' '))
       const preview = p.preview.replaceAll('```', "'''")
