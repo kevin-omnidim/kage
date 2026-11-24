@@ -217,7 +217,7 @@ void (async () => {
 
 const tmux = tmuxPanes({
   name: NAME, envFile: ENV_FILE, claude: CLAUDE,
-  settings: () => ({ autoMemoryDirectory: MEM.own, ...protectConfig(ENV_FILE, CODE, undefined, config.harness?.sandbox === true) }),
+  settings: () => ({ autoMemoryDirectory: MEM.own, ...protectConfig(ENV_FILE, CODE, undefined, config.harness?.sandbox === true, config.harness?.privateDirs ?? []) }),
   ssm: { sock: SSM_SOCK, shim: SSM_SHIM, issue: key => ssm.issue(key), drop: key => ssm.drop(key) },
   idOf: key => d.saved()[key],
   placeOf,
@@ -272,7 +272,7 @@ const sdk = sdkLib ? sdkSessions({
   toHub: (key, m) => routeReply(key, m, replies),
   options: sessionOptions(sdkLib.claude),
   onMcp: q => { if (needs.watching()) void mcpStatus(q).then(needs.seen).catch(e => log('mcp status failed', e)) },
-  ownerMemory: MEM.owner, ownMemory: MEM.own, sharedTools: config.sharedTools,
+  ownerMemory: MEM.owner, ownMemory: MEM.own, sharedTools: config.sharedTools, privateDirs: config.harness?.privateDirs ?? [],
   envFile: ENV_FILE,
   codeDir: CODE, sandbox: owner => sandboxed(config.harness?.sandbox, owner),
   ssm: { sock: SSM_SOCK, shim: SSM_SHIM, issue: key => ssm.issue(key), drop: key => ssm.drop(key) },

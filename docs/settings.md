@@ -104,6 +104,7 @@ A monitoring app (AWS Chatbot, Grafana, PagerDuty) can wake Kage with no tag. On
 | `harness.cwd` | your home folder | The folder sessions start in. |
 | `harness.memory` | `~/.config/kage/memory` | Kage's own memory folder. |
 | `harness.ownerMemory` | your Claude Code memory for the home folder | The memory Kage reads, and where it may write notes about people (`user_*.md`) only. |
+| `harness.privateDirs` | none | Folders only your own tasks may open, such as meeting transcripts or a notes app's data. A task from anyone else (a teammate, a trusted teammate, an agent, an email) is refused by the file tools and by a shell command that names one, and a walled shell cannot read them at all. Your own tasks are not limited. `~` means your home folder. |
 
 ## ssh to hosts behind AWS SSM
 

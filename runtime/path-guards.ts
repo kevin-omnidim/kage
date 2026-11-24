@@ -29,7 +29,7 @@ export function configRefusal(tool: string, input: Record<string, unknown>, send
 const CONFIG_NAMES = ['session.env', 'telemetry-id', 'kagelets', 'job-state', 'config.json*', 'crons-import.json*', 'waha', 'screen', 'threads.json*', 'afk.json*', 'github-threads.json*', 'mail-threads.json*',
   'kage.db*', 'hub.lock', 'hub.log*', 'router.sock', 'ssm.sock', 'keys.sock', '.archive', 'updated-from', 'browser-seen', 'wa-notes', 'retro-sent', 'dream-sent', 'daily-sent', 'crash-dm-at',
   'config-unknown-told', 'boots', 'held', 'sender', 'ledgers', 'last-seen']
-export function protectConfig(envFile: string, codeDir: string, home = process.env.HOME ?? '', sandbox: boolean | 'kagelet' = false) {
+export function protectConfig(envFile: string, codeDir: string, home = process.env.HOME ?? '', sandbox: boolean | 'kagelet' = false, privateDirs: readonly string[] = []) {
   const dirs = [...new Set([dirname(envFile), realish(dirname(envFile))])]
   const tokens = dirs.flatMap(d => [`${d}/secrets.json*`, `${d}/env*`, `${d}/session.env*`, `${d}/waha/.env*`])
   const kept = new Set(['files', 'memory'])
@@ -47,7 +47,7 @@ export function protectConfig(envFile: string, codeDir: string, home = process.e
       network: { allowedDomains: ['*'], allowLocalBinding: true, allowAllUnixSockets: sandbox !== 'kagelet',
         ...sandbox === 'kagelet' && { allowUnixSockets: [process.env.GNUPGHOME ?? `${home}/.gnupg`, process.env.SSH_AUTH_SOCK].filter((s): s is string => !!s) } },
       filesystem: {
-        allowWrite: ['/'], denyRead: tokens,
+        allowWrite: ['/'], denyRead: [...tokens, ...privateDirs.map(d => d.replace(/^~(?=\/|$)/, home)).flatMap(d => [...new Set([resolve(d), realish(d)])])],
         denyWrite: [...new Set([...tokens, ...folder, ...[codeDir, realish(codeDir)], ...logins])],
       },
     },
@@ -115,7 +115,23 @@ export function agentReadRefusal(tool: string, input: { file_path?: string; path
     || SECRET_FILE.test(full) || SECRET_GLOB.test(glob)
   return secret ? `${target} may hold secrets, and an agent's task does not read them.` : undefined
 }
-export function toolRefusal(tool: string, input: Record<string, unknown>, sender: string | undefined, o: { ownerMemory: string; envFile: string; sharedTools?: readonly string[]; side?: boolean }): string | undefined {
-  return agentToolRefusal(tool, sender) ?? agentReadRefusal(tool, input as { file_path?: string }, sender) ?? privateToolRefusal(tool, sender) ?? voiceToolRefusal(tool, sender) ?? mcpToolRefusal(tool, sender, o.sharedTools) ?? slackSendRefusal(tool)
+export function privateDirRefusal(tool: string, input: Record<string, unknown>, sender: string | undefined, dirs: readonly string[], home = process.env.HOME ?? '', cwd = process.cwd()): string | undefined {
+  if (sender === 'owner' || !dirs.length || !CONFIG_TOOLS.has(tool)) return undefined
+  const closed = dirs.map(d => d.replace(/^~(?=\/|$)/, home)).flatMap(d => [...new Set([resolve(d), realish(d)])])
+  const refusal = `That folder holds the owner's private notes, and this task did not come from the owner. Reply that this needs the owner, and stop.`
+  if (tool === 'Bash') {
+    const command = String(input.command ?? '').replace(/(^|[\s'"=:])~(?=\/)/g, `$1${home}`).replace(/\$\{?HOME\}?/g, home)
+    return closed.some(d => command.includes(d)) ? refusal : undefined
+  }
+  const raw = String(input.file_path ?? input.notebook_path ?? input.path ?? (tool === 'Grep' || tool === 'Glob' ? cwd : ''))
+  if (!raw) return undefined
+  const target = realish(resolve(cwd, raw.replace(/^~(?=\/|$)/, home)))
+  const inside = closed.some(d => target === d || target.startsWith(`${d}/`))
+  const sweeps = (tool === 'Grep' || tool === 'Glob') && closed.some(d => d.startsWith(`${target}/`))
+  return inside || sweeps ? refusal : undefined
+}
+
+export function toolRefusal(tool: string, input: Record<string, unknown>, sender: string | undefined, o: { ownerMemory: string; envFile: string; sharedTools?: readonly string[]; side?: boolean; privateDirs?: readonly string[] }): string | undefined {
+  return privateDirRefusal(tool, input, sender, o.privateDirs ?? []) ?? agentToolRefusal(tool, sender) ?? agentReadRefusal(tool, input as { file_path?: string }, sender) ?? privateToolRefusal(tool, sender) ?? voiceToolRefusal(tool, sender) ?? mcpToolRefusal(tool, sender, o.sharedTools) ?? slackSendRefusal(tool)
     ?? ownerMemoryRefusal(tool, input as { file_path?: string }, o.ownerMemory, sender, undefined, undefined, o.side) ?? configRefusal(tool, input, sender, o.envFile)
 }

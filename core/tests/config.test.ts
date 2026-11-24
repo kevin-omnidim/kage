@@ -13,6 +13,7 @@ KAGE_ROUTE=plugin
 KAGE_CWD=/work/home
 KAGE_MEMORY=/work/mem
 KAGE_OWNER_MEMORY=/work/owner-mem
+KAGE_PRIVATE_DIRS=~/private-notes
 KAGE_MAX_SESSIONS=6
 KAGE_IDLE_MINUTES=45
 KAGE_JOB_MODEL=haiku

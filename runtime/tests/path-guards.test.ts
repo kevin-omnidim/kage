@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { agentReadRefusal, certFileEnv, configRefusal, dreamNoteRefusal, protectConfig, ownerMemoryRefusal, toolRefusal } from '../path-guards.ts'
+import { agentReadRefusal, certFileEnv, configRefusal, dreamNoteRefusal, privateDirRefusal, protectConfig, ownerMemoryRefusal, toolRefusal } from '../path-guards.ts'
 
 describe("the owner's memory takes only people notes", () => {
   const MEM = '/home/o/.claude/projects/-home-o/memory'
@@ -334,5 +334,34 @@ describe("the owner's own task may fix the owner's memory", () => {
   test('a side lane such as the dream stays read only, though it runs as the owner', () => {
     assert.match(as('owner', 'Edit', 'feedback_x.md', true) ?? '', /people notes/)
     assert.match(as('owner', 'Write', 'feedback_x.md', true) ?? '', /people notes/)
+  })
+})
+
+describe('privateDirRefusal: folders only the owner\'s own tasks open', () => {
+  const home = mkdtempSync(join(tmpdir(), 'kage-home-'))
+  mkdirSync(join(home, 'notes', 'meetings'), { recursive: true })
+  const dirs = ['~/notes/meetings']
+  const at = (tool: string, input: Record<string, unknown>, sender: string | undefined) => privateDirRefusal(tool, input, sender, dirs, home, home)
+  test('a teammate, a trusted teammate and an agent are refused by every file tool and by a shell command that names the folder', () => {
+    for (const who of ['teammate', 'trusted', 'agent', undefined]) {
+      assert.ok(at('Read', { file_path: `${home}/notes/meetings/a.md` }, who), `Read ${who}`)
+      assert.ok(at('Read', { file_path: '~/notes/meetings/a.md' }, who), `Read ~ ${who}`)
+      assert.ok(at('Grep', { pattern: 'x', path: `${home}/notes` }, who), `Grep above ${who}`)
+      assert.ok(at('Glob', { pattern: '**/*.md' }, who), `Glob from home ${who}`)
+      assert.ok(at('Bash', { command: 'cat ~/notes/meetings/a.md' }, who), `Bash ${who}`)
+      assert.ok(at('Bash', { command: 'cat $HOME/notes/meetings/a.md' }, who), `Bash HOME ${who}`)
+    }
+  })
+  test("the owner's task opens it, and other folders stay open to everyone", () => {
+    assert.equal(at('Read', { file_path: `${home}/notes/meetings/a.md` }, 'owner'), undefined)
+    assert.equal(at('Bash', { command: 'cat ~/notes/meetings/a.md' }, 'owner'), undefined)
+    assert.equal(at('Read', { file_path: `${home}/notes/other.md` }, 'teammate'), undefined)
+    assert.equal(at('Grep', { pattern: 'x', path: `${home}/notes/other` }, 'teammate'), undefined)
+    assert.equal(privateDirRefusal('Read', { file_path: `${home}/notes/meetings/a.md` }, 'teammate', [], home, home), undefined)
+  })
+  test("a walled shell cannot read the folder, and toolRefusal applies the rule", () => {
+    const w = protectConfig(`${home}/cfg/env`, home, home, true, dirs)
+    assert.ok(w.sandbox!.filesystem.denyRead.includes(realpathSync(join(home, 'notes', 'meetings'))))
+    assert.ok(toolRefusal('Read', { file_path: `${home}/notes/meetings/a.md` }, 'teammate', { ownerMemory: `${home}/mem`, envFile: `${home}/cfg/env`, privateDirs: [`${home}/notes/meetings`] }))
   })
 })
