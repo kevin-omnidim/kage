@@ -115,7 +115,7 @@ export function agentReadRefusal(tool: string, input: { file_path?: string; path
     || SECRET_FILE.test(full) || SECRET_GLOB.test(glob)
   return secret ? `${target} may hold secrets, and an agent's task does not read them.` : undefined
 }
-export function privateDirRefusal(tool: string, input: Record<string, unknown>, sender: string | undefined, dirs: readonly string[], home = process.env.HOME ?? '', cwd = process.cwd()): string | undefined {
+export function privateDirRefusal(tool: string, input: Record<string, unknown>, sender: string | undefined, dirs: readonly string[], home = process.env.HOME ?? '', cwd = process.cwd(), ownerMemory = ''): string | undefined {
   if (sender === 'owner' || !dirs.length || !CONFIG_TOOLS.has(tool)) return undefined
   const closed = dirs.map(d => d.replace(/^~(?=\/|$)/, home)).flatMap(d => [...new Set([resolve(d), realish(d)])])
   const refusal = `That folder holds the owner's private notes, and this task did not come from the owner. Reply that this needs the owner, and stop.`
@@ -126,12 +126,14 @@ export function privateDirRefusal(tool: string, input: Record<string, unknown>, 
   const raw = String(input.file_path ?? input.notebook_path ?? input.path ?? (tool === 'Grep' || tool === 'Glob' ? cwd : ''))
   if (!raw) return undefined
   const target = realish(resolve(cwd, raw.replace(/^~(?=\/|$)/, home)))
+  const memory = ownerMemory && realish(ownerMemory)
+  if (memory && (target === memory || target.startsWith(`${memory}/`))) return undefined
   const inside = closed.some(d => target === d || target.startsWith(`${d}/`))
   const sweeps = (tool === 'Grep' || tool === 'Glob') && closed.some(d => d.startsWith(`${target}/`))
   return inside || sweeps ? refusal : undefined
 }
 
 export function toolRefusal(tool: string, input: Record<string, unknown>, sender: string | undefined, o: { ownerMemory: string; envFile: string; sharedTools?: readonly string[]; side?: boolean; privateDirs?: readonly string[] }): string | undefined {
-  return privateDirRefusal(tool, input, sender, o.privateDirs ?? []) ?? agentToolRefusal(tool, sender) ?? agentReadRefusal(tool, input as { file_path?: string }, sender) ?? privateToolRefusal(tool, sender) ?? voiceToolRefusal(tool, sender) ?? mcpToolRefusal(tool, sender, o.sharedTools) ?? slackSendRefusal(tool)
+  return privateDirRefusal(tool, input, sender, o.privateDirs ?? [], undefined, undefined, o.ownerMemory) ?? agentToolRefusal(tool, sender) ?? agentReadRefusal(tool, input as { file_path?: string }, sender) ?? privateToolRefusal(tool, sender) ?? voiceToolRefusal(tool, sender) ?? mcpToolRefusal(tool, sender, o.sharedTools) ?? slackSendRefusal(tool)
     ?? ownerMemoryRefusal(tool, input as { file_path?: string }, o.ownerMemory, sender, undefined, undefined, o.side) ?? configRefusal(tool, input, sender, o.envFile)
 }

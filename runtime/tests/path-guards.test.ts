@@ -359,6 +359,14 @@ describe('privateDirRefusal: folders only the owner\'s own tasks open', () => {
     assert.equal(at('Grep', { pattern: 'x', path: `${home}/notes/other` }, 'teammate'), undefined)
     assert.equal(privateDirRefusal('Read', { file_path: `${home}/notes/meetings/a.md` }, 'teammate', [], home, home), undefined)
   })
+  test("the owner's memory inside a private folder keeps its own rule: a teammate reads people notes there and nothing else", () => {
+    const mem = join(home, 'notes', 'meetings', 'memory')
+    mkdirSync(mem, { recursive: true })
+    const o = { ownerMemory: mem, envFile: `${home}/cfg/env`, privateDirs: [`${home}/notes/meetings`] }
+    assert.equal(toolRefusal('Read', { file_path: `${mem}/user_jay.md` }, 'teammate', o), undefined)
+    assert.ok(toolRefusal('Read', { file_path: `${mem}/project.md` }, 'teammate', o))
+    assert.ok(toolRefusal('Read', { file_path: `${home}/notes/meetings/session.jsonl` }, 'teammate', o))
+  })
   test("a walled shell cannot read the folder, and toolRefusal applies the rule", () => {
     const w = protectConfig(`${home}/cfg/env`, home, home, true, dirs)
     assert.ok(w.sandbox!.filesystem.denyRead.includes(realpathSync(join(home, 'notes', 'meetings'))))
