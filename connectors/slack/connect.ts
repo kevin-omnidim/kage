@@ -34,6 +34,7 @@ export type Hub = {
   stop(c: Conversation, cut: boolean, by: string): string
   verdict(requestId: string, behavior: 'allow' | 'deny', always?: true): boolean
   status(): string
+  dream?(): Promise<string | undefined>
   heard(m: { chat: string; thread?: string; quoted: string }): void
   ownerWrote?(chat: string, thread: string, text: string): void
   kageletsIn?(chat: string, thread: string): { name: string; people: string[] }[]; kageletAsk?(chat: string, thread: string, name: string, from: string, text: string): string
@@ -164,6 +165,11 @@ export async function connectSlack(o: { askOtherAgents?: boolean; saved?: Saved;
     if (t.kind === 'status') {
       react(m.channel, m.ts, PICKED_UP)
       return void notifyOwner(o.hub.status())
+    }
+    if (t.kind === 'dream') {
+      react(m.channel, m.ts, PICKED_UP)
+      const said = await o.hub.dream?.()
+      return void (said && notifyOwner(said))
     }
     if (t.kind === 'stop') {
       react(m.channel, m.ts, PICKED_UP)

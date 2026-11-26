@@ -134,7 +134,7 @@ The hub fetches `https://api.example.com/v1/things` and adds the key in the head
 
 ## The nightly dream
 
-Each night, while every session is quiet, Kage reads the day's threads for lessons. It sends each lesson to the hub with quotes from the threads that show it. The hub keeps a lesson only when it passes the checks below, writes it into Kage's memory, and logs each lesson it drops, with the reason, in `.dream-ledger.tsv` in that folder. Threads run as tmux panes skip the check, and the dream writes its own notes.
+Each night, while every session is quiet, Kage reads the day's threads for lessons. To dream now instead, write `dream` (or `dream now`) to Kage: it starts the same dream at once, at any hour and with sessions running, and it counts as a dream: the night's own dream runs only once 12 hours have passed since it, so asking in the evening stands in for that night. Only your message does this; a teammate's is a normal task. It does not start while Kage is paused by the usage limit. It sends each lesson to the hub with quotes from the threads that show it. The hub keeps a lesson only when it passes the checks below, writes it into Kage's memory, and logs each lesson it drops, with the reason, in `.dream-ledger.tsv` in that folder. Threads run as tmux panes skip the check, and the dream writes its own notes.
 
 | Setting | Default | Effect |
 |---|---|---|

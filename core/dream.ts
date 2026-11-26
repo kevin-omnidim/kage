@@ -3,7 +3,8 @@ import { isJobLane } from './conversations.ts'
 const GAP = 12 * 3600_000
 export const DREAM_KEY = 'dm#side-dream'
 
-export function dreamDue(now: number, last: number | undefined, quiet: boolean): boolean {
+export function dreamDue(now: number, last: number | undefined, quiet: boolean, asked = false): boolean {
+  if (asked) return true
   const hour = new Date(now).getHours()
   return quiet && hour >= 2 && hour < 6 && (last === undefined || now - last >= GAP)
 }

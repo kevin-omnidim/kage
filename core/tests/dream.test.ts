@@ -12,6 +12,9 @@ test('a dream runs every night, between 02:00 and 06:00 local time, only when ev
   assert.equal(dreamDue(sun, sun - 2 * HOUR, true), false)
   assert.equal(dreamDue(sun, sun - DAY + 20 * 60_000, true), true)
 })
+test('the owner asking dreams at once: any hour, a busy hub, a dream an hour ago', () => {
+  assert.equal(dreamDue(Date.parse('2026-11-08T12:00:00Z'), sun - HOUR, false, true), true)
+})
 test('the dream reads the threads that moved since the last dream, never its own', () => {
   const sessions = { 'C1:1.1': 'a', 'C2:2.2': 'b', 'dm#side-dream': 'c', 'dm': 'd', 'C1:1.1#side-job-j1': 'e' }
   const mtime: Record<string, number> = { a: sun - HOUR, b: sun - 2 * DAY, c: sun - HOUR, e: sun - HOUR }

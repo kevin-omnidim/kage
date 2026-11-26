@@ -10,6 +10,7 @@ export const validName = (name: string) => /^[a-z][a-z0-9-]{1,20}$/.test(name)
 export type Trigger =
   | { kind: 'task'; text: string; side?: true; agent?: string }
   | { kind: 'status' }
+  | { kind: 'dream' }
   | { kind: 'stop'; now: boolean }
   | { kind: 'card'; request_id: string }
   | { kind: 'verdict'; request_id: string; behavior: 'allow' | 'deny'; always?: true }
@@ -29,6 +30,7 @@ const drop = (reason: Drop): Trigger => ({ kind: 'drop', reason })
 const SIDE_RE = /^side:\s*/i
 const task = (text: string, isOwner: boolean, files: string, agent?: string): Trigger => {
   if (isOwner && /^status$/i.test(text)) return { kind: 'status' }
+  if (isOwner && /^dream( now)?$/i.test(text.trim())) return { kind: 'dream' }
   const stop = agent ? null : /^stop( now)?$/i.exec(text.trim())
   if (stop) return { kind: 'stop', now: !!stop[1] }
   const side = isOwner ? SIDE_RE.exec(text) : null

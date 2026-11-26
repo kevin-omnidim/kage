@@ -176,7 +176,7 @@ const slack: Awaited<ReturnType<typeof connectSlack>> = !SLACK ? offlineSlack(NA
   hub: { deliver, stop: (c, cut, by) => {
       const key = sessionKey(c, { lane: 'main' })
       return mayStop(by, slack.ids.owner, starters, key) ? stopThread(key, cut) : 'Only the owner, or the teammate whose task started this thread, can stop it.'
-    }, verdict: (id, behavior, always) => ownerVerdict(id, behavior, always), status: () => commands.status(), heard: m => schedules.heard(m), channelPost: p => jobs.channelPost(p), channelCatchUp: h => jobs.channelCatchUp(h), channelGap: () => jobs.channelGap(),
+    }, verdict: (id, behavior, always) => ownerVerdict(id, behavior, always), status: () => commands.status(), dream: () => dreaming.dream(Date.now(), true), heard: m => schedules.heard(m), channelPost: p => jobs.channelPost(p), channelCatchUp: h => jobs.channelCatchUp(h), channelGap: () => jobs.channelGap(),
     posted: () => ledgers.text('posted'), sessionOf: (c, lane) => rotator.sessionOf(sessionKey(c, { lane })), kageletsIn: (chat, thread) => kag.peopleIn(chat, thread), kageletAsk: (chat, thread, name, from, text) => kag.ask(chat, thread, name, from, text), ownerWrote: (chat, thread, text) => { for (const k of kag.notes.wrote(kag.lanes(), chat, thread, text)) runs.emit(k, 'owner-note', `${text.length} characters`) }, ...inbox },
   jev: jev && !('error' in jev) ? jevCheck(jev) : undefined, ackWords: config.jev?.ackWords !== false, alerts: config.alerts,
   triage: jev && !('error' in jev) ? jevTriage(jev, (who, detail) => runs.emit(who, 'triage', detail)) : undefined,
@@ -368,7 +368,7 @@ runJobs([
   { name: 'auto-release', every: 3_600_000, run: updates.autoRelease },
   { name: 'hub-log', every: 3_600_000, run: () => rotate(`${DIR}/hub.log`) },
   { name: 'kagelets', every: 60_000, run: kag.sync },
-  { name: 'dream', every: 10 * 60_000, run: dreaming.dream },
+  { name: 'dream', every: 10 * 60_000, run: async now => { await dreaming.dream(now) } },
   { name: 'kagelet dreams', every: 10 * 60_000, run: dreaming.kageletDreams },
   { name: 'retro', every: 10 * 60_000, run: digests.weeklyRetro }, ...clock, ...needs.jobs,
   { name: 'kagelet messages', every: 20_000, run: now => { kag.routes.pump(now); kag.needs.pump(now); kag.measure(now) } },

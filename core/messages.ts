@@ -1,6 +1,9 @@
 const cut = (e: unknown) => String(e).slice(0, 120)
 
 export const ownerLines = {
+  dreamStarted: (threads: number) => `Dreaming now, on ${threads} ${threads === 1 ? 'thread' : 'threads'} since the last dream.`,
+  dreamPaused: () => 'I can\'t dream right now: Kage is paused by the usage limit. Ask again once it lifts.',
+  dreamFailed: () => 'The dream could not start a session. Try again in a minute.',
   holdsLifted: (kagelet: string, n: number) => n ? `Lifted ${n} deny ${n === 1 ? 'hold' : 'holds'} on ${kagelet}. It may ask about those steps again.` : `${kagelet} has no deny holds.`,
   emailHeld: (to: string[], reason: string, body: string) => `Held an email reply to ${to.join(', ')} (${reason}). Send it yourself if it is fine:\n${body}`,
   emailReplyFailed: (place: string, e: unknown) => `Email reply failed for ${place}: ${e}`,

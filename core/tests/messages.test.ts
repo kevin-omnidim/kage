@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url'
 import { ownerLines as L } from '../messages.ts'
 
 const cases: [string, string][] = [
+  [L.dreamStarted(1), "Dreaming now, on 1 thread since the last dream."],
+  [L.dreamStarted(4), "Dreaming now, on 4 threads since the last dream."],
+  [L.dreamPaused(), "I can't dream right now: Kage is paused by the usage limit. Ask again once it lifts."],
+  [L.dreamFailed(), 'The dream could not start a session. Try again in a minute.'],
   [L.emailHeld(['a@x.test', 'b@x.test'], 'outside domain', 'hi\nthere'), 'Held an email reply to a@x.test, b@x.test (outside domain). Send it yourself if it is fine:\nhi\nthere'],
   [L.emailReplyFailed('#ops', new Error('boom')), 'Email reply failed for #ops: Error: boom'],
   [L.whatsappHeld('15550001', 'secret', 'msg'), 'Held a WhatsApp message to 15550001 (secret). Send it yourself if it is fine:\nmsg'],

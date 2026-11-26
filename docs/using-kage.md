@@ -38,6 +38,7 @@ The first start installs the Agent SDK and turns on the service: macOS or Linux 
 |---|---|
 | Check every part | `kage doctor` prints the command that fixes each problem |
 | See every session live | `kage top`, by mouse or keys. `kage status` prints one look. |
+| Dream now, not at night | Write `dream` to Kage in Slack. It runs the nightly dream at once and says so when it starts. |
 | Follow every step as it happens | `kage watch`, or `kage watch support` for one place |
 | Work in a thread yourself | `kage attach '<link>'` with the thread's Slack link ("Copy link" on any message in it, kept in quotes), or `kage attach <place>`. You get it at once (a running turn stops, as with Esc), and Kage gets it back when you quit. |
 | Read the hub log | `kage logs`, `kage logs 500`, or `kage logs -f` to follow it |

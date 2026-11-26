@@ -4,6 +4,7 @@ import { log } from '../runtime/log.ts'
 import { selfReview } from '../core/ledgers.ts'
 import { chatText, dreamDue, dreamTask, threadsSince, type DreamLesson, type DreamLimits } from '../core/dream.ts'
 import { applyLessons } from '../runtime/dream-lessons.ts'
+import { ownerLines } from '../core/messages.ts'
 import { dreamInput, dreamsDue, kageletDreamTask } from '../core/kagelets/memory.ts'
 import { kageletRows } from '../core/kagelets/kagelet.ts'
 import type { Conversation, Lane } from '../core/conversations.ts'
@@ -34,9 +35,10 @@ export function dreams(o: {
   const DREAMT = `${o.dir}/dream-sent`, KDREAMT = 'kagelet-dream-last', THREADS = 'dream-threads', SPENT = 'dream-kept'
   const ownsRepo = canPushToKage(args => new Promise((ok, no) => execFile('gh', args, { timeout: 15_000 }, (e, out) => e ? no(e) : ok(out))))
   return {
-    async dream(now: number) {
+    async dream(now: number, asked = false): Promise<string | undefined> {
       const last = Number(readFile(DREAMT).trim()) || undefined
-      if (o.paused() || !dreamDue(now, last, o.quiet(now))) return
+      if (o.paused()) return asked ? ownerLines.dreamPaused() : undefined
+      if (!dreamDue(now, last, o.quiet(now), asked)) return
       const snap = snapshotMemory(o.mem.own, now)
       const since = Math.max(last ?? 0, now - DAY)
       const file = (id: string) => `${o.project}/${id}.jsonl`
@@ -54,7 +56,9 @@ export function dreams(o: {
         scheduled: true,
       })
       log('dream starts, memory saved to', snap)
-      if (o.deliver(c, task, task.meta.place, 'side-dream') !== 'failed') writeFileSync(DREAMT, String(now), { mode: 0o600 })
+      if (o.deliver(c, task, task.meta.place, 'side-dream') === 'failed') return asked ? ownerLines.dreamFailed() : undefined
+      writeFileSync(DREAMT, String(now), { mode: 0o600 })
+      return asked ? ownerLines.dreamStarted(threads.length) : undefined
     },
     lessons(lessons: DreamLesson[]) {
       const sessions = o.store.sessions()

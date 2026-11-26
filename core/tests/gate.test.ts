@@ -167,6 +167,12 @@ describe('what starts a task', () => {
     assert.deepEqual(classify(msg({ user: MATE, text: '@kage status' }), ids), { kind: 'task', text: 'status' })
     assert.deepEqual(classify(msg({ text: '@kage status of the deploy?' }), ids), { kind: 'task', text: 'status of the deploy?' })
   })
+  test('"dream" or "dream now" from the owner starts the nightly dream at once; from a teammate it is a plain task', () => {
+    assert.deepEqual(classify(msg({ channel: DM, text: 'dream' }), ids), { kind: 'dream' })
+    assert.deepEqual(classify(msg({ text: `<@${BOT}> Dream now` }), ids), { kind: 'dream' })
+    assert.deepEqual(classify(msg({ user: MATE, text: '@kage dream now' }), ids), { kind: 'task', text: 'dream now' })
+    assert.deepEqual(classify(msg({ text: '@kage dream about the roadmap' }), ids), { kind: 'task', text: 'dream about the roadmap' })
+  })
   test('"side: <task>" from the owner runs beside a busy thread session, in its own', () => {
     assert.deepEqual(classify(msg({ text: '@kage side: check the queue' }), ids), { kind: 'task', text: 'check the queue', side: true })
     assert.deepEqual(classify(msg({ text: '@kage side effects of the migration?' }), ids), { kind: 'task', text: 'side effects of the migration?' })
