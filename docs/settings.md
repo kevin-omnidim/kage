@@ -134,7 +134,7 @@ The hub fetches `https://api.example.com/v1/things` and adds the key in the head
 
 ## The nightly dream
 
-Each night, while every session is quiet, Kage reads the day's threads for lessons. To dream now instead, write `dream` (or `dream now`) to Kage: it starts the same dream at once, at any hour and with sessions running, and it counts as a dream: the night's own dream runs only once 12 hours have passed since it, so asking in the evening stands in for that night. Only your message does this; a teammate's is a normal task. It does not start while Kage is paused by the usage limit. It sends each lesson to the hub with quotes from the threads that show it. The hub keeps a lesson only when it passes the checks below, writes it into Kage's memory, and logs each lesson it drops, with the reason, in `.dream-ledger.tsv` in that folder. Threads run as tmux panes skip the check, and the dream writes its own notes.
+Each night, while every session is quiet (from 02:00, or `dream.startHour`, for 4 hours), Kage reads the day's threads for lessons. To dream now instead, write `dream` (or `dream now`) to Kage: it starts the same dream at once, at any hour and with sessions running, and it counts as a dream: the night's own dream runs only once 12 hours have passed since it, so asking in the evening stands in for that night. Only your message does this; a teammate's is a normal task. It does not start while Kage is paused by the usage limit. It sends each lesson to the hub with quotes from the threads that show it. The hub keeps a lesson only when it passes the checks below, writes it into Kage's memory, and logs each lesson it drops, with the reason, in `.dream-ledger.tsv` in that folder. Threads run as tmux panes skip the check, and the dream writes its own notes.
 
 | Setting | Default | Effect |
 |---|---|---|
@@ -142,6 +142,7 @@ Each night, while every session is quiet, Kage reads the day's threads for lesso
 | `dream.minConfidence` | `0.7` | A lesson the dream rates below this confidence, from 0 to 1, is dropped. |
 | `dream.maxNew` | `6` | The most new lessons kept in one night, the most confident first. |
 | `dream.maxOutdated` | `5` | The most notes retired in one night. A retired note is copied to `.archive/` and taken out of the index. |
+| `dream.startHour` | `2` | The local hour (0–23) the nightly dream window opens. The window lasts 4 hours, so `0` dreams between midnight and 04:00, as soon as every session is quiet. The Mac must be awake then. |
 
 ## Questions waiting on you
 

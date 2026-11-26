@@ -38,7 +38,7 @@ export function dreams(o: {
     async dream(now: number, asked = false): Promise<string | undefined> {
       const last = Number(readFile(DREAMT).trim()) || undefined
       if (o.paused()) return asked ? ownerLines.dreamPaused() : undefined
-      if (!dreamDue(now, last, o.quiet(now), asked)) return
+      if (!dreamDue(now, last, o.quiet(now), asked, o.limits().startHour)) return
       const snap = snapshotMemory(o.mem.own, now)
       const since = Math.max(last ?? 0, now - DAY)
       const file = (id: string) => `${o.project}/${id}.jsonl`

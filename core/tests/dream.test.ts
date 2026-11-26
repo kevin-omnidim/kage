@@ -12,6 +12,16 @@ test('a dream runs every night, between 02:00 and 06:00 local time, only when ev
   assert.equal(dreamDue(sun, sun - 2 * HOUR, true), false)
   assert.equal(dreamDue(sun, sun - DAY + 20 * 60_000, true), true)
 })
+test('dream.startHour moves the 4-hour window, across midnight too', () => {
+  const at = (h: number) => Date.parse(`2026-11-08T${String(h).padStart(2, '0')}:30:00+05:30`)
+  assert.equal(dreamDue(at(0), undefined, true, false, 0), true)
+  assert.equal(dreamDue(at(3), undefined, true, false, 0), true)
+  assert.equal(dreamDue(at(4), undefined, true, false, 0), false)
+  assert.equal(dreamDue(at(0), undefined, true), false)
+  assert.equal(dreamDue(at(23), undefined, true, false, 22), true)
+  assert.equal(dreamDue(at(1), undefined, true, false, 22), true)
+  assert.equal(dreamDue(at(2), undefined, true, false, 22), false)
+})
 test('the owner asking dreams at once: any hour, a busy hub, a dream an hour ago', () => {
   assert.equal(dreamDue(Date.parse('2026-11-08T12:00:00Z'), sun - HOUR, false, true), true)
 })
@@ -112,7 +122,7 @@ describe('a lesson is kept only when code confirms it (#488)', () => {
   test('at most maxNew new and maxOutdated outdated lessons a night, the most confident first', () => {
     const many = [0.8, 0.95, 0.9].map((confidence, i) => lesson({ confidence, file: `n${i}.md` }))
     const old = [0.8, 0.9].map((confidence, i) => lesson({ kind: 'outdated', confidence, file: `o${i}.md` }))
-    const r = checkDream([...many, ...old], chats, { minChats: 2, minConfidence: 0.7, maxNew: 2, maxOutdated: 1 })
+    const r = checkDream([...many, ...old], chats, { ...DREAM_LIMITS, minChats: 2, minConfidence: 0.7, maxNew: 2, maxOutdated: 1 })
     assert.deepEqual(r.kept.map(l => l.file), ['n1.md', 'n2.md', 'o1.md'])
     assert.deepEqual(r.dropped.map(d => [d.lesson.file, d.why]), [['n0.md', 'over 2 new lessons tonight'], ['o0.md', 'over 1 outdated lessons tonight']])
   })

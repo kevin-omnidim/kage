@@ -3,10 +3,10 @@ import { isJobLane } from './conversations.ts'
 const GAP = 12 * 3600_000
 export const DREAM_KEY = 'dm#side-dream'
 
-export function dreamDue(now: number, last: number | undefined, quiet: boolean, asked = false): boolean {
+export function dreamDue(now: number, last: number | undefined, quiet: boolean, asked = false, start = DREAM_LIMITS.startHour): boolean {
   if (asked) return true
   const hour = new Date(now).getHours()
-  return quiet && hour >= 2 && hour < 6 && (last === undefined || now - last >= GAP)
+  return quiet && (hour - start + 24) % 24 < 4 && (last === undefined || now - last >= GAP)
 }
 
 export function threadsSince(sessions: Record<string, string>, mtime: (id: string) => number | undefined, since: number): { key: string; id: string }[] {
@@ -64,8 +64,8 @@ const mistakesStep = (mem: string, block: string) => [
 ].join('\n')
 
 export type DreamLesson = { kind: 'new' | 'outdated'; file: string; text: string; evidence: { key: string; quote: string }[]; confidence: number }
-export type DreamLimits = { minChats: number; minConfidence: number; maxNew: number; maxOutdated: number }
-export const DREAM_LIMITS: DreamLimits = { minChats: 2, minConfidence: 0.7, maxNew: 6, maxOutdated: 5 }
+export type DreamLimits = { minChats: number; minConfidence: number; maxNew: number; maxOutdated: number; startHour: number }
+export const DREAM_LIMITS: DreamLimits = { minChats: 2, minConfidence: 0.7, maxNew: 6, maxOutdated: 5, startHour: 2 }
 const MIN_QUOTE = 12
 const NOTE = /^(?!memory\.md$)[\w-]+\.md$/i
 const plain = (t: string) => t.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/\s+/g, ' ').trim()
