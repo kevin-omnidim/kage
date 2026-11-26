@@ -2,6 +2,7 @@ import { noChannelTag, oneLine, quotedLine } from './text.ts'
 import { FOOTER_ID } from './outbound.ts'
 import { agentTag, filesTag, postedAsItself, postedByTrustedApp, typedByPerson, type SlackMessage } from './slack-message.ts'
 import type { Task } from './task.ts'
+import { appEntry } from './registry.ts'
 
 export type Ids = { owner: string; bot: string; botDm: string; name: string; teammates: string[]; trusted?: string[]; apps?: string[]; team?: string }
 
@@ -55,10 +56,11 @@ export function classify(m: SlackMessage, ids: Ids, card?: string, kagelets: { n
     if (k) return { kind: 'kagelet-ask', name: k.name, text }
   }
   if (!isOwner && !itself && !ids.teammates.includes(m.user ?? '')) return drop('not-listed')
-  if (!typedByPerson(m) && (isOwner || !(itself || postedByTrustedApp(m, ids.apps ?? [])))) return drop('not-proven')
+  const ownerApp = isOwner && !typedByPerson(m) && ownersApp(m, ids)
+  if (!typedByPerson(m) && !ownerApp && (isOwner || !(itself || postedByTrustedApp(m, ids.apps ?? [])))) return drop('not-proven')
   const agent = typedByPerson(m) ? undefined : m.app_id
   const text = raw.replace(tag, '').trim()
-  if (inDm) {
+  if (inDm && !agent) {
     const plain = text.replaceAll('`', '').trim()
     if (card && !m.fromSocket) {
       const behavior = CARD_YES.test(plain) ? 'allow' : CARD_NO.test(plain) ? 'deny' : null
@@ -67,8 +69,10 @@ export function classify(m: SlackMessage, ids: Ids, card?: string, kagelets: { n
     }
     return task(text, true, filesTag(m))
   }
-  return task(text, isOwner, filesTag(m), agent)
+  return task(text, isOwner && !agent, filesTag(m), agent)
 }
+const ownersApp = (m: SlackMessage, ids: Ids) =>
+  postedByTrustedApp(m, (ids.apps ?? []).filter(a => appEntry(a)?.owner === ids.owner))
 
 export function quoteMessage(
   x: { user?: string; ts?: string; text?: string; client_msg_id?: string; blocks?: { block_id?: string }[] }, owner: string,

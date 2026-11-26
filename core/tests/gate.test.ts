@@ -61,6 +61,18 @@ describe('who can drive the agent', () => {
     assert.deepEqual(classify(appPost({ user: MATE, subtype: 'message_changed', text: `<@${BOT}> hi` }), withApp), { kind: 'drop', reason: 'not-proven' })
     assert.deepEqual(classify(appPost({ user: MATE, text: `<@${BOT}> hi` }), ids), { kind: 'drop', reason: 'not-proven' })
   })
+  test('an app the owner lists as theirs may post on the owner\'s account: an agent task with the agent\'s rights, never the owner\'s', () => {
+    const mine = { ...ids, apps: [`ATEST0001:${OWNER}`] }
+    const appPost = (o: Record<string, unknown>) => msg({ client_msg_id: undefined, bot_id: 'BTEST0001', app_id: 'ATEST0001', user: OWNER, ...o })
+    assert.deepEqual(classify(appPost({ text: `<@${BOT}> research Tamil` }), mine), { kind: 'task', text: 'research Tamil', agent: 'ATEST0001' })
+    assert.deepEqual(classify(appPost({ channel: DM, text: 'research Tamil' }), mine), { kind: 'task', text: 'research Tamil', agent: 'ATEST0001' })
+    assert.deepEqual(classify(appPost({ channel: DM, text: 'yes abcde' }), mine, 'abcde'), { kind: 'task', text: 'yes abcde', agent: 'ATEST0001' })
+    assert.deepEqual(classify(appPost({ channel: DM, text: 'stop' }), mine), { kind: 'task', text: 'stop', agent: 'ATEST0001' })
+    assert.deepEqual(classify(appPost({ channel: DM, text: 'dream' }), mine), { kind: 'task', text: 'dream', agent: 'ATEST0001' })
+    assert.deepEqual(classify(appPost({ channel: DM, text: 'hi', app_id: 'AOTHER001' }), mine), { kind: 'drop', reason: 'not-proven' })
+    assert.deepEqual(classify(appPost({ channel: DM, text: 'hi', subtype: 'message_changed' }), mine), { kind: 'drop', reason: 'not-proven' })
+    assert.deepEqual(classify(appPost({ channel: DM, text: 'hi' }), { ...ids, apps: [`ATEST0001:${MATE}`] }), { kind: 'drop', reason: 'not-proven' })
+  })
   test('an agent tied to one person counts only with that person\'s token; one owned by another agent does not count yet', () => {
     const appPost = (o: Record<string, unknown>) => msg({ client_msg_id: undefined, bot_id: 'BTEST0001', app_id: 'ATEST0001', text: `<@${BOT}> pull forms`, ...o })
     const two = { ...ids, teammates: [MATE, 'UMATE0002'] }
