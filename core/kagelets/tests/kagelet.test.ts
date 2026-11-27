@@ -88,6 +88,8 @@ describe('a kagelet file', () => {
   })
   test('a dream\'s proposal tool is a thread tool: the grant never has to name it, and the tool call stays inside the grant', () => {
     assert.equal(grantRefusal('mcp__kage__propose_memory', []), undefined)
+    assert.equal(grantRefusal('mcp__kage__send_file', ['all']), undefined)
+    assert.match(grantRefusal('mcp__kage__make_canvas', ['all']) ?? '', /never holds/)
     assert.match(grantRefusal('Write', []) ?? '', /never holds/)
   })
   test('a file that names an act tool is broken, with the reason, so it shows as broken, not running', () => {
@@ -148,9 +150,9 @@ describe('the grant', () => {
     assert.match(grantRefusal('WebSearch', ['WebFetch']) ?? '', /grant/)
     assert.equal(grantRefusal('mcp__kage__reply', []), undefined)
     assert.match(grantRefusal('mcp__other__thing', []) ?? '', /grant/)
-    for (const t of ['mcp__kage__message_people', 'mcp__kage__schedule', 'mcp__kage__away', 'mcp__kage__send_file', 'mcp__kage__set_model', 'mcp__kage__log_prod_write'])
+    for (const t of ['mcp__kage__message_people', 'mcp__kage__schedule', 'mcp__kage__away', 'mcp__kage__set_model', 'mcp__kage__log_prod_write'])
       assert.match(grantRefusal(t, []) ?? '', /grant/, t)
-    for (const t of ['mcp__kage__reply', 'mcp__kage__edit_message', 'mcp__kage__delete_message', 'mcp__kage__report', 'mcp__kage__message_kagelet']) assert.equal(grantRefusal(t, []), undefined, t)
+    for (const t of ['mcp__kage__reply', 'mcp__kage__edit_message', 'mcp__kage__delete_message', 'mcp__kage__send_file', 'mcp__kage__report', 'mcp__kage__message_kagelet']) assert.equal(grantRefusal(t, []), undefined, t)
   })
   test('ToolSearch is always there, since a granted tool may load deferred; what it loads still passes the grant', () => {
     assert.equal(grantRefusal('ToolSearch', ['WebFetch'], { query: 'select:WebFetch' }), undefined)

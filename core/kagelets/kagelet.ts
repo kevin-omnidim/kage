@@ -154,7 +154,7 @@ export function rowLine(r: KageletRow, now: number) {
 export const resultLine = (r: KageletRow, now: number) => !r.result ? 'no report yet'
   : `${clockTime(r.result.at, now)} ${r.result.needs ? `needs: ${r.result.needs} (${r.result.summary})` : r.result.summary}`
 
-const THREAD_TOOLS = [...['reply', 'edit_message', 'delete_message', 'report', 'message_kagelet', 'propose_memory'].map(t => `mcp__kage__${t}`), 'ToolSearch']
+const THREAD_TOOLS = [...['reply', 'edit_message', 'delete_message', 'send_file', 'report', 'message_kagelet', 'propose_memory'].map(t => `mcp__kage__${t}`), 'ToolSearch']
 const WEB_TOOLS = ['WebFetch', 'WebSearch']
 export const shellGrant = (grant: string[] | undefined) => !!grant?.includes(ALL)
 export const covers = (grant: string[], tool: string) => grant.includes(tool) || (shellGrant(grant) && !tool.startsWith('mcp__') && tool !== DB_READ)
